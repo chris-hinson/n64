@@ -1,25 +1,29 @@
+use crate::cart::Cart;
 use crate::rdram::Rdram;
 use proc_bitfield::bitfield;
+use std::cell::RefCell;
 use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
 //struct for the main VR4300 cpu
 #[derive(Default)]
 pub struct Cpu {
-    rf: Rf,
+    pub rf: Rf,
     //needs cop0(cpu controll coprocessor) - NOTE: coprocessors are on the same die!!! they are not separate hardware!!
-    cop0: cop0,
+    pub cop0: cop0,
     //needs cop1 (fp coprocessor)
 
     //////////////////////////////////
     //Rcs to other pieces of the system that we can touch
-    mem: Rc<Rdram>,
+    mem: Rc<RefCell<Rdram>>,
+    cart: Rc<RefCell<Cart>>,
 }
 
 impl Cpu {
-    pub fn new(mem: Rc<Rdram>) -> Self {
+    pub fn new(mem: Rc<RefCell<Rdram>>, cart: Rc<RefCell<Cart>>) -> Self {
         Self {
-            mem: mem,
+            mem,
+            cart,
             ..Default::default()
         }
     }
@@ -28,26 +32,26 @@ impl Cpu {
 //main register file of the cpu
 #[allow(non_snake_case)]
 #[derive(Default)]
-struct Rf {
+pub struct Rf {
     //gprs - 32, 64 bit regs (always reads as 64-bit)
-    gprs: [u64; 32],
+    pub gprs: [u64; 32],
     //fprs - these are 64 bit IEEE754 compliant. should we use u64s or actual doubles
     //NOTE: youre gonna have to put some more thought into this i think
     //p. 208 in the manual. look at how you can access differently. might be okay to just use u32s and cast?
-    fprs: [u64; 32],
+    pub fprs: [u64; 32],
     //PC
-    PC: u64,
+    pub PC: u64,
     //HI
-    HI: u64,
+    pub HI: u64,
     //LO
-    LO: u64,
+    pub LO: u64,
     //LLBit
-    LLBit: bool,
+    pub LLBit: bool,
 
     //NOTE: these are floating point control registers
-    FCR0: u32,
+    pub FCR0: u32,
     //FCR31 -- constrol/status reg //bitflags //chris, go figure out how to use kelpsys crate
-    FCR31: FP_control_reg,
+    pub FCR31: FP_control_reg,
 }
 
 //lets let us index into rf's gprs either explicitly or via a gpr number (5 bit bitfield)
@@ -110,7 +114,7 @@ impl IndexMut<GPR> for Rf {
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq)]
-enum GPR {
+pub enum GPR {
     zero,
     at,
     v0,
@@ -288,36 +292,36 @@ enum cop0reg {
 
 //make this indexable by an enum of all the registers it contains. impl Index and IndexMut traits
 #[derive(Default)]
-struct cop0 {
-    Index: u32,    //32 bit
-    Random: u32,   //32 bit
-    EntryLo0: u64, //64 bit (32 bit access sign extends)
-    EntryLo1: u64, //64 bit (32 bit access sign extends)
-    Context: u64,  //64 bit (32 bit sign access sign extends?)
-    PageMask: u64, //64 bit (32 bit access sign extends)
-    Wired: u32,    //32 bit
+pub struct cop0 {
+    pub Index: u32,    //32 bit
+    pub Random: u32,   //32 bit
+    pub EntryLo0: u64, //64 bit (32 bit access sign extends)
+    pub EntryLo1: u64, //64 bit (32 bit access sign extends)
+    pub Context: u64,  //64 bit (32 bit sign access sign extends?)
+    pub PageMask: u64, //64 bit (32 bit access sign extends)
+    pub Wired: u32,    //32 bit
     //7 — Reserved for future use
-    BadVAddr: u64,          //64 (32 ?)
-    Count: u32,             //32 bit
-    EntryHi: u64,           //64 bit (32 bit access sign extends)
-    Compare: u32,           //32 bit
-    Status: status_reg,     //32 bit NOTE: this is actually a bitfield
-    Cause: cause_reg,       //32 bit NOTE: this is actually a bitfield
-    EPC: u64,               //64 (32?)
-    PRId: PRId_reg,         //32 NOTE: bitfield
-    Config: config_reg,     //32 NOTE: bitfield
-    LLAddr: u32,            //32
-    WatchLo: u32,           //32
-    WatchHi: u32,           //32
-    XContext: XContext_reg, //64 NOTE: bitfield
+    pub BadVAddr: u64,          //64 (32 ?)
+    pub Count: u32,             //32 bit
+    pub EntryHi: u64,           //64 bit (32 bit access sign extends)
+    pub Compare: u32,           //32 bit
+    pub Status: status_reg,     //32 bit NOTE: this is actually a bitfield
+    pub Cause: cause_reg,       //32 bit NOTE: this is actually a bitfield
+    pub EPC: u64,               //64 (32?)
+    pub PRId: PRId_reg,         //32 NOTE: bitfield
+    pub Config: config_reg,     //32 NOTE: bitfield
+    pub LLAddr: u32,            //32
+    pub WatchLo: u32,           //32
+    pub WatchHi: u32,           //32
+    pub XContext: XContext_reg, //64 NOTE: bitfield
     //21–25 — Reserved for future use
     //this reg is only here for VR4200 compat and we never use it. so no nice bitfield for it
-    Parity: u32,      //32: bitfield
-    Cache: u32,       //32
-    TagLo: TagLo_reg, //32 bitfield
+    pub Parity: u32,      //32: bitfield
+    pub Cache: u32,       //32
+    pub TagLo: TagLo_reg, //32 bitfield
     //this is just always 0??
-    TagHi: u32,    //32 bitfield
-    ErrorEPC: u64, //64 (32?)*/
+    pub TagHi: u32,    //32 bitfield
+    pub ErrorEPC: u64, //64 (32?)*/
 }
 
 //status reg

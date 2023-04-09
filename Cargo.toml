@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 log = "0.4.17"
+mipsasm = "2.0.1"
 pretty_env_logger = "0.4.0"
 proc-bitfield = "0.2.2"
