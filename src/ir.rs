@@ -48,9 +48,19 @@ enum Op {
         shamt: Option<u8>,
     },
 
+    //TODO: how the FUCK do we want to handle the coprocessor conditionals??
     ControlFlow {
-        conditional: bool,
+        conditional: ControlConditionalType,
+        //NOTE: we say destination and not offset because even for branch co
+        destination: ControlDestType,
+        register: Option<GPR>,
+        //fuck you mips. need this field so we know if we are dealing with delay slots or not
+        likely: bool,
+        link: bool,
     },
+
+    //these are really just cop0 instructions
+    SystemControl {},
 }
 
 enum AluOps {
@@ -120,3 +130,19 @@ enum AluOpSrc {
 }
 
 //enum ControlFlowType
+enum ControlConditionalType {
+    Unconditional,
+    CopZFalse { cop: usize },
+    CopZTrue { cop: usize },
+    Eq { reg2: GPR },
+    Ne { reg2: GPR },
+    GEZ,
+    GTZ,
+    LEZ,
+    LTZ,
+}
+
+enum ControlDestType {
+    Absolute { dest: usize },
+    Relative { offset: i64 },
+}
