@@ -5,6 +5,7 @@ use crate::system::System;
 
 mod cart;
 mod cpu;
+mod ir;
 mod rcp;
 mod rdram;
 mod rsp;
