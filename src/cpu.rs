@@ -113,7 +113,7 @@ impl IndexMut<GPR> for Rf {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum GPR {
     zero,
     at,

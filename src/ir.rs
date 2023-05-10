@@ -22,30 +22,37 @@ use crate::cpu::GPR;
 //control flow
 //system control
 
-enum Op {
+#[derive(Debug)]
+pub enum Op {
     Load {
         width: usize,
-        dest: GPR,
+        //this needs to be an enum because of our LWC and SWC ops
+        dest: GPRorCoPGPR,
         base: GPR,
         offset: u16,
         condtional: bool,
+        aligned: bool,
     },
     Store {
         widt: usize,
-        src: GPR,
+        //this needs to be an enum because of our LWC and SWC ops
+        src: GPRorCoPGPR,
         base: GPR,
         offset: u16,
         conditional: bool,
+        aligned: bool,
     },
 
     //computational instructions that use the alu
     AluOp {
         op_type: AluOps,
+        //false = 32 bit, true = 64 bit (doubleword ops)
+        mode: bool,
         val_src: AluOpSrc,
         dst: GPR,
         imm_src: Option<u16>,
         reg_rc: Option<GPR>,
-        shamt: Option<u8>,
+        shamt: Option<shamt>,
     },
 
     //TODO: how the FUCK do we want to handle the coprocessor conditionals??
@@ -53,17 +60,35 @@ enum Op {
         conditional: ControlConditionalType,
         //NOTE: we say destination and not offset because even for branch co
         destination: ControlDestType,
-        register: Option<GPR>,
+        register: Option<GPRorCoPGPR>,
         //fuck you mips. need this field so we know if we are dealing with delay slots or not
         likely: bool,
         link: bool,
     },
 
-    //these are really just cop0 instructions
-    SystemControl {},
+    Move {
+        src: GPRorCoPGPR,
+        dest: GPRorCoPGPR,
+    },
+
+    System {
+        opcode: SystemOp,
+    },
 }
 
-enum AluOps {
+#[derive(Debug)]
+pub enum SystemOp {
+    Cache,
+    Syscall,
+    Break,
+    Sync,
+    Trap { condition: ControlConditionalType },
+    Tlb,
+    Eret,
+}
+
+#[derive(Debug)]
+pub enum AluOps {
     //immeadiate ops
     //These are all if I-type form
     ADDI,
@@ -124,13 +149,26 @@ enum AluOps {
     MTHI,
     MTLO,
 }
-enum AluOpSrc {
-    Imm,
-    Reg,
+#[derive(Debug)]
+pub enum AluOpSrc {
+    Imm(u16),
+    Reg(GPR),
 }
 
-//enum ControlFlowType
-enum ControlConditionalType {
+#[derive(Debug)]
+pub enum shamt {
+    Imm(u8),
+    Variable(GPR),
+}
+
+#[derive(Debug)]
+pub enum GPRorCoPGPR {
+    gpr(GPR),
+    cop,
+}
+
+#[derive(Debug)]
+pub enum ControlConditionalType {
     Unconditional,
     CopZFalse { cop: usize },
     CopZTrue { cop: usize },
@@ -142,7 +180,34 @@ enum ControlConditionalType {
     LTZ,
 }
 
-enum ControlDestType {
+#[derive(Debug)]
+pub enum ControlDestType {
     Absolute { dest: usize },
     Relative { offset: i64 },
+}
+
+//this function takes a guest machine code basic block as parsed elsewhere and returns an ir basic block
+pub fn lift(block: Vec<u32>) -> Vec<Op> {
+    let mut ir_block = Vec::new();
+
+    for instr in block {
+        ir_block.push(guest_to_ir(instr).unwrap());
+    }
+
+    ir_block
+}
+
+#[derive(Debug)]
+pub enum LiftError {
+    InvalidOpcodeError,
+    ReservedOpcodeError,
+}
+
+pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
+    /*match instr {
+        0x0000_0000 =>
+
+    }*/
+
+    Err(LiftError::InvalidOpcodeError)
 }

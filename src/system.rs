@@ -92,6 +92,7 @@ impl System {
 
         let mut base_pc = self.cpu.borrow().rf.PC;
 
+        //TODO: this might need to become u64s if we are for some reason running in 64 bit mode
         let mut block_vec: Vec<u32> = Vec::new();
 
         loop {
