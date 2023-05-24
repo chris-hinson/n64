@@ -51,6 +51,7 @@ pub enum Op {
         val_src: AluOpSrc,
         dst: GPR,
         imm_src: Option<u16>,
+        //TODO: WHAT IS THIS FOR CHRIS?!?!?!?
         reg_rc: Option<GPR>,
         shamt: Option<shamt>,
     },
@@ -74,6 +75,9 @@ pub enum Op {
     System {
         opcode: SystemOp,
     },
+
+    //this WILL fire a
+    MalformedOp,
 }
 
 #[derive(Debug)]
@@ -204,10 +208,85 @@ pub enum LiftError {
 }
 
 pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
-    /*match instr {
-        0x0000_0000 =>
+    //top 5 bits are always the opcode, with the caveat that a full 0 opcode needs more decoding
+    let opcode = (instr & 0xFC00_0000) >> 26;
 
-    }*/
+    //lets just always mask out all our field so they are available for use if we want
+    let r_op_rs = (0x03E0_0000 >> 21) as u8;
+    let r_op_rt = (0x001F_0000 >> 16) as u8;
+    let r_op_rd = (0x0000_F800 >> 11) as u8;
+    let r_op_shamt = (0x0000_07C0 >> 6) as u8;
+    let r_sub_op = 0x0000_003F as u8;
+
+    match opcode {
+        //SPECIAL decoding
+        0x0 => {
+            let sub_opcode = instr & 0x0000_003F;
+            match sub_opcode {
+                //SLL
+                0x00 => {
+                    return Ok(Op::AluOp {
+                        op_type: AluOps::SLL,
+                        mode: false,
+                        val_src: AluOpSrc::Reg(r_op_rt.into()),
+                        dst: r_op_rd.into(),
+                        imm_src: None,
+                        reg_rc: None,
+                        shamt: Some(shamt::Imm(r_op_shamt)),
+                    });
+                }
+                //RESERVED INSTRUCTION EXCEPTION
+                0x01 => return Ok(Op::MalformedOp),
+                //SRL
+                0x02 => {
+                    return Ok(Op::AluOp {
+                        op_type: AluOps::SRL,
+                        mode: false,
+                        val_src: AluOpSrc::Reg(r_op_rt.into()),
+                        dst: r_op_rd.into(),
+                        imm_src: None,
+                        reg_rc: None,
+                        shamt: Some(shamt::Imm(r_op_shamt)),
+                    })
+                }
+                //SRA
+                0x03 => {
+                    return Ok(Op::AluOp {
+                        op_type: AluOps::SRA,
+                        mode: false,
+                        val_src: AluOpSrc::Reg(r_op_rt.into()),
+                        dst: r_op_rd.into(),
+                        imm_src: None,
+                        reg_rc: None,
+                        shamt: Some(shamt::Imm(r_op_shamt)),
+                    })
+                }
+                //SLLV
+                0x04 => {
+                    return Ok(Op::AluOp {
+                        op_type: AluOps::SLLV,
+                        mode: false,
+                        val_src: AluOpSrc::Reg(r_op_rt.into()),
+                        dst: r_op_rd.into(),
+                        imm_src: None,
+                        reg_rc: None,
+                        shamt: Some(shamt::Variable(r_op_shamt.into())),
+                    });
+                }
+                //RESERVED INSTRUCTION EXCEPTION
+                0x05 => {}
+                //SRLV
+                0x06 => {}
+                //SRAV
+                0x07 => {}
+                _ => unreachable!("decoded impossible operation in SPECIAL decoding"),
+            }
+        }
+        //REGIMM decoding
+        0x1 => {}
+
+        _ => unreachable!("main lift match bad pattern"),
+    }
 
     Err(LiftError::InvalidOpcodeError)
 }
