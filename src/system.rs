@@ -1,8 +1,10 @@
 use crate::cart::Cart;
 use crate::cpu::Cpu;
 use crate::cpu::GPR;
+use crate::ir::Op;
 use crate::rcp::Rcp;
 use crate::rdram::Rdram;
+use colored::Colorize;
 use log::{debug, info};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -40,6 +42,9 @@ const BRANCH_OR_JUMP_OPS: [u8; 17] = [
     0b0000_00, //JALR (special), JR
 ];
 
+#[derive(Debug)]
+pub enum ExecutionError {}
+
 impl System {
     pub fn run(&mut self) -> Result<SystemResult, SystemResult> {
         info!("system run start");
@@ -75,15 +80,25 @@ impl System {
 
         let block_base = self.cpu.borrow().rf.PC;
         let block = self.find_next_basic_block();
+        println!("found basic block:");
         for (idx, instr) in block.iter().enumerate() {
             println!(
-                "{:#x}, {instr:#x}: {}",
+                "\t{:#x}, {instr:#x}: {}",
                 (block_base + (idx as u64 * 4)),
                 disas.disassemble(&[*instr])[0]
             );
         }
 
+        let ir_block = crate::ir::lift(block);
+        for op in ir_block {
+            self.execute_IR(op).unwrap();
+        }
+
         Ok(SystemResult::Graceful)
+    }
+
+    pub fn execute_IR(&mut self, op: Op) -> Result<usize, ExecutionError> {
+        Ok(0)
     }
 
     pub fn find_next_basic_block(&self) -> Vec<u32> {
