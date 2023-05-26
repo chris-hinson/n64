@@ -33,17 +33,17 @@ pub enum Op {
         offset: Option<u16>,
         condtional: bool,
         aligned: bool,
-        imm: Option<usize>,
+        imm_src: Option<usize>,
     },
     Store {
-        widt: usize,
+        width: usize,
         //this needs to be an enum because of our LWC and SWC ops
         src: GPRorCoPGPR,
         base: Option<GPR>,
         offset: Option<u16>,
         conditional: bool,
         aligned: bool,
-        imm: Option<usize>,
+        imm_src: Option<usize>,
     },
 
     //computational instructions that use the alu
@@ -54,7 +54,6 @@ pub enum Op {
         //mode: bool,
         dst: GPR,
         //imm_src: Option<u16>,
-        //TODO: WHAT IS THIS FOR CHRIS?!?!?!?
         src_1: Option<GPR>,
         src_2: AluOpSrc,
         //shamt: Option<shamt>,
@@ -305,6 +304,14 @@ pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
         //REGIMM decoding
         //0x1 => {}
 
+        //ORI
+        0xD => Ok(Op::AluOp {
+            op_type: AluOps::ORI,
+            dst: i_op_rt.into(),
+            src_1: Some(i_op_rs.into()),
+            src_2: AluOpSrc::Imm(i_op_imm),
+        }),
+
         //LUI
         0xF => Ok(Op::Load {
             width: 16,
@@ -313,7 +320,18 @@ pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
             offset: None,
             condtional: false,
             aligned: true,
-            imm: Some(i_op_imm.into()),
+            imm_src: Some(i_op_imm.into()),
+        }),
+
+        //SW
+        0x2B => Ok(Op::Store {
+            width: 32,
+            src: GPRorCoPGPR::gpr(i_op_rt.into()),
+            base: Some(i_op_rs.into()),
+            offset: Some(i_op_imm),
+            conditional: false,
+            aligned: true,
+            imm_src: None,
         }),
         _ => unimplemented!(
             "decoded unimplemented opcode in main decoding. bit pattern: {:x},  {}",
