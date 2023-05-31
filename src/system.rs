@@ -1,7 +1,7 @@
 use crate::cart::Cart;
 use crate::cpu::Cpu;
 use crate::cpu::GPR;
-use crate::ir::Op;
+use crate::ir::{AluOps::*, Op};
 use crate::rcp::Rcp;
 use crate::rdram::Rdram;
 use colored::Colorize;
@@ -98,6 +98,48 @@ impl System {
     }
 
     pub fn execute_IR(&mut self, op: Op) -> Result<usize, ExecutionError> {
+        match op {
+            Op::Load {
+                width,
+                dest,
+                base,
+                offset,
+                condtional,
+                aligned,
+                imm_src,
+            } => {}
+            Op::Store {
+                width,
+                src,
+                base,
+                offset,
+                conditional,
+                aligned,
+                imm_src,
+            } => {}
+            Op::AluOp {
+                op_type,
+                dst,
+                src_1,
+                src_2,
+            } => {
+                let function  = match op_type {
+                    ORI => |num1: u32, num2: u32| -> u32 {num1 | num2},
+                    _=>unimplemented!("PANIC: this alu opcode does not have an anonymous function implemented for it yet")
+                };
+            }
+            Op::ControlFlow {
+                conditional,
+                destination,
+                register,
+                likely,
+                link,
+            } => {}
+            Op::Move { src, dest } => {}
+            Op::System { opcode } => {}
+            Op::MalformedOp => {}
+        }
+
         Ok(0)
     }
 

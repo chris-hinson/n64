@@ -304,6 +304,27 @@ pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
         //REGIMM decoding
         //0x1 => {}
 
+        //BNE
+        0x5 => Ok(Op::ControlFlow {
+            conditional: ControlConditionalType::Ne {
+                reg2: i_op_rt.into(),
+            },
+            destination: ControlDestType::Relative {
+                offset: i_op_imm.into(),
+            },
+            register: Some(GPRorCoPGPR::gpr(i_op_rs.into())),
+            likely: false,
+            link: false,
+        }),
+
+        //ANDI
+        0xC => Ok(Op::AluOp {
+            op_type: AluOps::ANDI,
+            dst: i_op_rt.into(),
+            src_1: Some(i_op_rt.into()),
+            src_2: AluOpSrc::Imm(i_op_imm),
+        }),
+
         //ORI
         0xD => Ok(Op::AluOp {
             op_type: AluOps::ORI,
@@ -321,6 +342,17 @@ pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
             condtional: false,
             aligned: true,
             imm_src: Some(i_op_imm.into()),
+        }),
+
+        //LW
+        0x23 => Ok(Op::Load {
+            width: 32,
+            dest: GPRorCoPGPR::gpr(i_op_rt.into()),
+            base: Some(i_op_rs.into()),
+            offset: Some(i_op_imm),
+            condtional: false,
+            aligned: true,
+            imm_src: None,
         }),
 
         //SW
