@@ -80,24 +80,28 @@ impl System {
 
         let block_base = self.cpu.borrow().rf.PC;
         let block = self.find_next_basic_block();
-        println!("found basic block:");
+        /*println!("found basic block:");
         for (idx, instr) in block.iter().enumerate() {
             println!(
                 "\t{:#x}, {instr:#x}: {}",
                 (block_base + (idx as u64 * 4)),
                 disas.disassemble(&[*instr])[0]
             );
-        }
+        }*/
 
         let ir_block = crate::ir::lift(block);
         for op in ir_block {
-            self.execute_IR(op).unwrap();
+            self.execute_IR(op.0, op.1).unwrap();
         }
 
         Ok(SystemResult::Graceful)
     }
 
-    pub fn execute_IR(&mut self, op: Op) -> Result<usize, ExecutionError> {
+    pub fn execute_IR(&mut self, op: Op, addr: u64) -> Result<usize, ExecutionError> {
+        info!(
+            "{}",
+            format!("executing ir op {:#x},{:?}", addr, op).green()
+        );
         match op {
             Op::Load {
                 width,
@@ -107,7 +111,40 @@ impl System {
                 condtional,
                 aligned,
                 imm_src,
-            } => {}
+            } => {
+                if aligned == false {
+                    panic!("implement unaligned memory accesses")
+                }
+                if condtional == true {
+                    unimplemented!("implement load conditional")
+                }
+
+                //calculate the value we are loading
+                let value = match base {
+                    Some(r) => {
+                        let base_addr = self.cpu.borrow_mut().rf[r];
+                        let final_addr = base_addr + offset.unwrap_or(0) as u64;
+                        let bytes = self.read(final_addr as u32, width / 8).unwrap();
+
+                        if width != 32 {
+                            panic!("chris you gotta go implement reads for multiple widths")
+                        }
+                        (bytes[0] as u32
+                            | (bytes[1] as u32) << 8
+                            | (bytes[2] as u32) << 16
+                            | (bytes[3] as u32) << 24)
+                    }
+                    None => imm_src.unwrap() as u32,
+                };
+
+                //write to destination
+                match dest {
+                    crate::ir::GPRorCoPGPR::gpr(r) => self.cpu.borrow_mut().rf[r] = value as u64,
+                    crate::ir::GPRorCoPGPR::cop => {
+                        unimplemented!("implement load to coprocessor")
+                    }
+                }
+            }
             Op::Store {
                 width,
                 src,
@@ -116,17 +153,63 @@ impl System {
                 conditional,
                 aligned,
                 imm_src,
-            } => {}
+            } => {
+                if aligned == false {
+                    unimplemented!("implement unaligned memory accesses in store")
+                }
+                if conditional == true {
+                    unimplemented!("implement store conditional")
+                }
+                if width != 32 {
+                    unimplemented!("implement stores for variable width")
+                }
+
+                let val = if imm_src.is_none() {
+                    match src {
+                        crate::ir::GPRorCoPGPR::gpr(r) => self.cpu.borrow_mut().rf[r],
+                        crate::ir::GPRorCoPGPR::cop => {
+                            unimplemented!("implement stores from coprocessor")
+                        }
+                    }
+                } else {
+                    imm_src.unwrap() as u64
+                };
+
+                let address = self.cpu.borrow_mut().rf[base.unwrap()] + offset.unwrap_or(0) as u64;
+                self.write(address, val);
+            }
             Op::AluOp {
                 op_type,
                 dst,
                 src_1,
                 src_2,
             } => {
-                let function  = match op_type {
-                    ORI => |num1: u32, num2: u32| -> u32 {num1 | num2},
-                    _=>unimplemented!("PANIC: this alu opcode does not have an anonymous function implemented for it yet")
+                //get a closure to represent the actual operation
+                let function = match op_type {
+                    //ADD => |num1: u32, num2: u32| -> u32 {num1.wrapping_add(num2)},
+                    ORI => |num1: u64, num2: u64| -> u64 { num1 | num2 },
+                    _ => unimplemented!(
+                        "PANIC: this alu opcode does not have an cloosure implemented for it yet"
+                    ),
                 };
+                //figure out where we are getting our values from
+                let a = match src_1 {
+                    Some(r) => self.cpu.borrow().rf[r],
+                    None => panic!(
+                        "panicking executing an AluOP, no a src. Does this make sense in context?"
+                    ),
+                };
+
+                let b = match src_2 {
+                    crate::ir::AluOpSrc::Imm(v) => v as u64,
+                    crate::ir::AluOpSrc::Reg(r) => self.cpu.borrow().rf[r],
+                };
+
+                //execute the closure for this operation
+                let result = function(a, b);
+
+                //writeback to the cpu destination
+                self.cpu.borrow_mut().rf[dst] = result;
             }
             Op::ControlFlow {
                 conditional,
@@ -134,23 +217,32 @@ impl System {
                 register,
                 likely,
                 link,
-            } => {}
-            Op::Move { src, dest } => {}
-            Op::System { opcode } => {}
-            Op::MalformedOp => {}
+            } => {
+                unimplemented!("control flow opcodes not implemented yet");
+            }
+            Op::Move { src, dest } => {
+                unimplemented!("moce opcodes not implemented yet");
+            }
+            Op::System { opcode } => {
+                unimplemented!("System opcodes not implemented yet");
+            }
+            Op::MalformedOp => {
+                panic!("malformed op in execution function!")
+            }
         }
 
         Ok(0)
     }
 
-    pub fn find_next_basic_block(&self) -> Vec<u32> {
+    //returns a block of addresses and the opcodes at those addresses
+    pub fn find_next_basic_block(&self) -> Vec<(u64, u32)> {
         //uhhhh. search forward from pc until we see a branch instruction!
         //dont forget to always include that pesky delay slot!
 
         let mut base_pc = self.cpu.borrow().rf.PC;
 
         //TODO: this might need to become u64s if we are for some reason running in 64 bit mode
-        let mut block_vec: Vec<u32> = Vec::new();
+        let mut block_vec: Vec<(u64, u32)> = Vec::new();
 
         loop {
             let next_instr = self.read(base_pc.try_into().unwrap(), 4).unwrap();
@@ -164,7 +256,7 @@ impl System {
                     || (next_instr & 0b111111) == 0b001001)
             {
                 //push the branch instruction here
-                block_vec.push(next_instr);
+                block_vec.push((base_pc, next_instr));
 
                 base_pc += 4;
 
@@ -174,10 +266,10 @@ impl System {
                     | (next_instr[1] as u32) << 16
                     | (next_instr[2] as u32) << 8
                     | next_instr[3] as u32;
-                block_vec.push(next_instr);
+                block_vec.push((base_pc, next_instr));
                 break;
             } else {
-                block_vec.push(next_instr);
+                block_vec.push((base_pc, next_instr));
             }
 
             base_pc += 4;
@@ -249,7 +341,7 @@ impl System {
 
     //lets assume that we are always passing virtual addresses here, and then we can handle all mmu
     //translations here and return or write data to physical addresses
-    //NOTE: for now we are only
+    //length is in bytes
     pub fn read(&self, addr: u32, len: usize) -> Result<Vec<u8>, String> {
         let phys = self.virt_to_phys(addr);
 

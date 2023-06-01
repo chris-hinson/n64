@@ -1,4 +1,6 @@
 use log::info;
+use pretty_env_logger::env_logger::filter::Filter;
+//use pretty_env_logger::formatted_builder;
 use std::thread::Builder;
 
 use crate::system::System;
@@ -10,7 +12,9 @@ mod rcp;
 mod rdram;
 mod rsp;
 mod system;
+
 fn main() {
+    pretty_env_logger::init();
     info!("program start");
 
     //let mut system = System::new();

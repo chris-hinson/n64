@@ -194,20 +194,25 @@ pub enum ControlDestType {
 }
 
 //this function takes a guest machine code basic block as parsed elsewhere and returns an ir basic block
-pub fn lift(block: Vec<u32>) -> Vec<Op> {
+pub fn lift(block: Vec<(u64, u32)>) -> Vec<(Op, u64)> {
     let disas = mipsasm::Mipsasm::new();
 
-    let mut ir_block = Vec::new();
+    let mut ir_block: Vec<(Op, u64)> = Vec::new();
 
     for instr in block {
-        println!(
+        log::info!(
             "{}",
-            format!("lifting: {}", disas.disassemble(&[instr])[0]).blue()
+            format!(
+                "lifting {:#x}: {}",
+                instr.0,
+                disas.disassemble(&[instr.1])[0]
+            )
+            .blue()
         );
-        let ir_op = guest_to_ir(instr).unwrap();
-        println!("{}\n", format!("{:?}", ir_op).blue());
+        let ir_op = guest_to_ir(instr.1).unwrap();
+        log::info!("{}\n", format!("{:?}", ir_op).blue());
 
-        ir_block.push(ir_op);
+        ir_block.push((ir_op, instr.0));
     }
 
     ir_block
