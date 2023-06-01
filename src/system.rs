@@ -175,8 +175,9 @@ impl System {
                     imm_src.unwrap() as u64
                 };
 
-                let address = self.cpu.borrow_mut().rf[base.unwrap()] + offset.unwrap_or(0) as u64;
-                self.write(address, val);
+                let address =
+                    self.cpu.borrow_mut().rf[base.unwrap()] as u32 + offset.unwrap_or(0) as u32;
+                self.write(address, val.to_le_bytes().to_vec());
             }
             Op::AluOp {
                 op_type,
@@ -283,7 +284,7 @@ impl System {
         debug!("constructing cpu");
         //construct resources
         let ram = Rc::new(RefCell::new(Rdram::default()));
-        let cart = Rc::new(RefCell::new(Cart::new("./roms/basic_simpleboot.z64")));
+        let cart = Rc::new(RefCell::new(Cart::new("./roms/addiu_simpleboot.z64")));
         //construct computational units
         let cpu = Rc::new(RefCell::new(Cpu::new(ram.clone(), cart.clone())));
         let rcp = Rc::new(RefCell::new(Rcp::new()));
@@ -370,28 +371,35 @@ impl System {
             }
         }
     }
-    pub fn write(&mut self) {}
+    pub fn write(&mut self, addr: u32, val: Vec<u8>) {
+        let phys = self.virt_to_phys(addr);
+
+        match phys {
+            //0x04000000..=0x0403FFFF => {}
+            _ => panic!("trying to write to a physical address we havent mapped yet: {phys:#x}"),
+        }
+    }
 
     pub fn virt_to_phys(&self, virt: u32) -> u32 {
         match virt {
             0x0000_0000..=0x7FFF_FFFF => {
-                panic!("tried to convert a virtual address in KUSEG")
+                panic!("tried to convert a virtual address in KUSEG {virt:#x}")
             } //KUSEG
             0x8000_0000..=0x9FFF_FFFF => {
-                panic!("tried to convert a virtual address in KSEG0")
+                panic!("tried to convert a virtual address in KSEG0 {virt:#x}")
             } //KSEG0
             0xA000_0000..=0xBFFF_FFFF => {
                 let conversion = virt.checked_sub(0xA000_0000);
                 match conversion {
                     Some(v) => return v,
-                    None => panic!("error converting address in KSEG1"),
+                    None => panic!("error converting address in KSEG1 {virt:#x}"),
                 }
             } //KSEG1
             0xC000_0000..=0xDFFF_FFFF => {
-                panic!("tried to convert a virtual address in KSEG2")
+                panic!("tried to convert a virtual address in KSEG2 {virt:#x}")
             } //KSEG2
             0xE000_0000..=0xFFFF_FFFF => {
-                panic!("tried to convert a virtual address in KSEG3")
+                panic!("tried to convert a virtual address in KSEG3 {virt:#x}")
             } //KSEG3
         }
     }

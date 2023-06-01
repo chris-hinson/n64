@@ -203,9 +203,10 @@ pub fn lift(block: Vec<(u64, u32)>) -> Vec<(Op, u64)> {
         log::info!(
             "{}",
             format!(
-                "lifting {:#x}: {}",
+                "lifting {:#x}: {}\t{:#x}",
                 instr.0,
-                disas.disassemble(&[instr.1])[0]
+                disas.disassemble(&[instr.1])[0],
+                instr.1
             )
             .blue()
         );
@@ -232,14 +233,14 @@ pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
     let opcode = (instr & 0xFC00_0000) >> 26;
 
     //lets just always mask out all our field so they are available for use if we want
-    let r_op_rs = (instr & 0x03E0_0000 >> 21) as u8;
-    let r_op_rt = (instr & 0x001F_0000 >> 16) as u8;
-    let r_op_rd = (instr & 0x0000_F800 >> 11) as u8;
-    let r_op_shamt = (instr & 0x0000_07C0 >> 6) as u8;
+    let r_op_rs = ((instr & 0x03E0_0000) >> 21) as u8;
+    let r_op_rt = ((instr & 0x001F_0000) >> 16) as u8;
+    let r_op_rd = ((instr & 0x0000_F800) >> 11) as u8;
+    let r_op_shamt = ((instr & 0x0000_07C0) >> 6) as u8;
     let r_sub_op = (instr & 0x0000_003F) as u8;
 
-    let i_op_rs = (instr & 0x03E0_0000 >> 21) as u8;
-    let i_op_rt = (instr & 0x001F_0000 >> 16) as u8;
+    let i_op_rs = ((instr & 0x03E0_0000) >> 21) as u8;
+    let i_op_rt = ((instr & 0x001F_0000) >> 16) as u8;
     let i_op_imm = (instr & 0x0000_FFFF) as u16;
 
     return match opcode {
@@ -346,7 +347,7 @@ pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
             offset: None,
             condtional: false,
             aligned: true,
-            imm_src: Some(i_op_imm.into()),
+            imm_src: Some((i_op_imm as usize) << 16),
         }),
 
         //LW
