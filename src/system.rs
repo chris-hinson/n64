@@ -2,6 +2,7 @@ use crate::cart::Cart;
 use crate::cpu::Cpu;
 use crate::cpu::GPR;
 use crate::ir::{AluOps::*, Op};
+use crate::pi::PI;
 use crate::rcp::Rcp;
 use crate::rdram::Rdram;
 use colored::Colorize;
@@ -17,6 +18,7 @@ pub struct System {
     pub cpu: Rc<RefCell<Cpu>>,
     pub cart: Rc<RefCell<Cart>>,
     pub rcp: Rc<RefCell<Rcp>>,
+    pub pi: Rc<RefCell<PI>>,
 }
 
 #[derive(Debug)]
@@ -166,13 +168,13 @@ impl System {
 
                 let val = if imm_src.is_none() {
                     match src {
-                        crate::ir::GPRorCoPGPR::gpr(r) => self.cpu.borrow_mut().rf[r],
+                        crate::ir::GPRorCoPGPR::gpr(r) => self.cpu.borrow_mut().rf[r] as u32,
                         crate::ir::GPRorCoPGPR::cop => {
                             unimplemented!("implement stores from coprocessor")
                         }
                     }
                 } else {
-                    imm_src.unwrap() as u64
+                    imm_src.unwrap() as u32
                 };
 
                 let address =
@@ -288,9 +290,10 @@ impl System {
         //construct computational units
         let cpu = Rc::new(RefCell::new(Cpu::new(ram.clone(), cart.clone())));
         let rcp = Rc::new(RefCell::new(Rcp::new()));
+        let pi = Rc::new(RefCell::new(PI::default()));
 
         //construct the actuall system
-        Self { cpu, cart, rcp }
+        Self { cpu, cart, rcp, pi }
     }
 
     //ipl1 boot sequence
@@ -375,7 +378,8 @@ impl System {
         let phys = self.virt_to_phys(addr);
 
         match phys {
-            //0x04000000..=0x0403FFFF => {}
+            //RCP PI address space NOT EXTERNAL BUS
+            0x04600000..=0x046FFFFF => self.pi.borrow_mut().write(phys, val),
             _ => panic!("trying to write to a physical address we havent mapped yet: {phys:#x}"),
         }
     }
