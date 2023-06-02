@@ -284,7 +284,7 @@ impl System {
         debug!("constructing cpu");
         //construct resources
         let ram = Rc::new(RefCell::new(Rdram::default()));
-        let cart = Rc::new(RefCell::new(Cart::new("./roms/addiu_simpleboot.z64")));
+        let cart = Rc::new(RefCell::new(Cart::new("./roms/basic_simpleboot.z64")));
         //construct computational units
         let cpu = Rc::new(RefCell::new(Cpu::new(ram.clone(), cart.clone())));
         let rcp = Rc::new(RefCell::new(Rcp::new()));
