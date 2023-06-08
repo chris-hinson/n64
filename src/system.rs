@@ -19,6 +19,7 @@ pub struct System {
     pub cart: Rc<RefCell<Cart>>,
     pub rcp: Rc<RefCell<Rcp>>,
     pub pi: Rc<RefCell<PI>>,
+    pub rdram: Rc<RefCell<Rdram>>,
 }
 
 #[derive(Debug)]
@@ -291,9 +292,16 @@ impl System {
         let cpu = Rc::new(RefCell::new(Cpu::new(ram.clone(), cart.clone())));
         let rcp = Rc::new(RefCell::new(Rcp::new()));
         let pi = Rc::new(RefCell::new(PI::default()));
+        let rdram = Rc::new(RefCell::new(Rdram::default()));
 
         //construct the actuall system
-        Self { cpu, cart, rcp, pi }
+        Self {
+            cpu,
+            cart,
+            rcp,
+            pi,
+            rdram,
+        }
     }
 
     //ipl1 boot sequence
@@ -350,6 +358,9 @@ impl System {
         let phys = self.virt_to_phys(addr);
 
         match phys {
+            //RDRAM
+            0x0000_0000..=0x03FFFFFF => self.rdram.borrow_mut().read(addr, len),
+
             //0x04000000 	0x04000FFF 	RSP DMEM 	RSP Data Memory
             //0x04001000 	0x04001FFF 	RSP IMEM 	RSP Instruction Memory
             //0x04002000 	0x0403FFFF 	RSP DMEM/IMEM Mirrors 	Mirrors of DMEM and IMEM (repeat every 8Kb)
@@ -379,7 +390,17 @@ impl System {
 
         match phys {
             //RCP PI address space NOT EXTERNAL BUS
-            0x04600000..=0x046FFFFF => self.pi.borrow_mut().write(phys, val),
+            0x04600000..=0x046FFFFF => {
+                let dma_question_mark = self.pi.borrow_mut().write(phys, val);
+                if dma_question_mark.is_some() {
+                    //execute the dma
+                    let dma_question_mark = dma_question_mark.unwrap();
+                    let from = dma_question_mark.from;
+                    let to = dma_question_mark.to;
+                    let len = dma_question_mark.len;
+                    unsafe {}
+                }
+            }
             _ => panic!("trying to write to a physical address we havent mapped yet: {phys:#x}"),
         }
     }

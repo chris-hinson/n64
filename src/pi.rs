@@ -18,12 +18,18 @@ pub struct PI {
     pub PI_BSD_DOM2_RLS: u32,
 }
 
+pub struct DMA_transfer_command {
+    pub from: u32,
+    pub to: u32,
+    pub len: usize,
+}
+
 impl PI {
     pub fn read(&self, addr: u32, len: usize) -> Result<Vec<u8>, String> {
         unimplemented!("no reading from PI yet")
     }
 
-    pub fn write(&mut self, addr: u32, val: Vec<u8>) {
+    pub fn write(&mut self, addr: u32, val: Vec<u8>) -> Option<DMA_transfer_command> {
         warn!("in PI write: addr: {addr:#x}, val: {:?}", val);
         if !(0x0460_0000..=0x0460_0030).contains(&addr) {
             panic!("attempting to write to a non mmio-address in PI {addr:#x}")
@@ -42,16 +48,29 @@ impl PI {
             }
             0x0460_0008 => {
                 self.PI_RD_LEN =
-                    val[0] as u32 | (val[1] as u32) << 8 | (val[2] as u32) << 16 | (0 as u32) << 24
+                    val[0] as u32 | (val[1] as u32) << 8 | (val[2] as u32) << 16 | (0 as u32) << 24;
+
+                return Some(DMA_transfer_command {
+                    from: self.PI_DRAM_ADDR,
+                    to: self.PI_CART_ADDR,
+                    len: self.PI_RD_LEN as usize,
+                });
             }
             0x0460_000C => {
                 self.PI_WR_LEN =
-                    val[0] as u32 | (val[1] as u32) << 8 | (val[2] as u32) << 16 | (0 as u32) << 24
+                    val[0] as u32 | (val[1] as u32) << 8 | (val[2] as u32) << 16 | (0 as u32) << 24;
+
+                return Some(DMA_transfer_command {
+                    from: self.PI_CART_ADDR,
+                    to: self.PI_DRAM_ADDR,
+                    len: self.PI_WR_LEN as usize,
+                });
             }
             _ => {
                 unreachable!("YOU SHOULD NEVER GET HERE. HOW DID U GET HERE.")
             }
         }
+        None
     }
 
     /*pub fn new() -> Self {
