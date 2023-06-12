@@ -76,32 +76,45 @@ impl Rdram {
             //this is writing a RDRAM INTERFACE config register
             match addr {
                 0x0470_0000 => {
-                    self.RI_MODE = (data[0] | data[1] << 8 | data[2] << 16 | data[3] << 24) as u32;
+                    self.RI_MODE = (data[0] as u32
+                        | (data[1] as u32) << 8
+                        | (data[2] as u32) << 16
+                        | (data[3] as u32) << 24) as u32;
                     Ok(32)
                 }
                 0x0470_00004 => {
-                    self.RI_CONFIG =
-                        (data[0] | data[1] << 8 | data[2] << 16 | data[3] << 24) as u32;
+                    self.RI_CONFIG = (data[0] as u32
+                        | (data[1] as u32) << 8
+                        | (data[2] as u32) << 16
+                        | (data[3] as u32) << 24) as u32;
                     Ok(32)
                 }
                 0x0470_00008 => {
-                    self.RI_CURRENT_LOAD =
-                        (data[0] | data[1] << 8 | data[2] << 16 | data[3] << 24) as u32;
+                    self.RI_CURRENT_LOAD = (data[0] as u32
+                        | (data[1] as u32) << 8
+                        | (data[2] as u32) << 16
+                        | (data[3] as u32) << 24) as u32;
                     Ok(32)
                 }
                 0x0470_0000C => {
-                    self.RI_SELECT =
-                        (data[0] | data[1] << 8 | data[2] << 16 | data[3] << 24) as u32;
+                    self.RI_SELECT = (data[0] as u32
+                        | (data[1] as u32) << 8
+                        | (data[2] as u32) << 16
+                        | (data[3] as u32) << 24) as u32;
                     Ok(32)
                 }
                 0x0470_00010 => {
-                    self.RI_REFRESH =
-                        (data[0] | data[1] << 8 | data[2] << 16 | data[3] << 24) as u32;
+                    self.RI_REFRESH = (data[0] as u32
+                        | (data[1] as u32) << 8
+                        | (data[2] as u32) << 16
+                        | (data[3] as u32) << 24) as u32;
                     Ok(32)
                 }
                 0x0470_00014 => {
-                    self.RI_LATENCY =
-                        (data[0] | data[1] << 8 | data[2] << 16 | data[3] << 24) as u32;
+                    self.RI_LATENCY = (data[0] as u32
+                        | (data[1] as u32) << 8
+                        | (data[2] as u32) << 16
+                        | (data[3] as u32) << 24) as u32;
                     Ok(32)
                 }
                 _ => unreachable!("how the fuck did u get here"),

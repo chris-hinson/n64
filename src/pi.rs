@@ -1,3 +1,5 @@
+use std::fmt::{Display, Write};
+
 use log::warn;
 use proc_bitfield::bitfield;
 
@@ -18,10 +20,21 @@ pub struct PI {
     pub PI_BSD_DOM2_RLS: u32,
 }
 
+#[derive(Debug)]
 pub struct DMA_transfer_command {
     pub from: u32,
     pub to: u32,
     pub len: usize,
+}
+impl Display for DMA_transfer_command {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let msg = format!(
+            "from: {:#x}, to: {:#x}, len: {:#x}",
+            self.from, self.to, self.len
+        );
+
+        f.write_str(&msg)
+    }
 }
 
 impl PI {
@@ -43,8 +56,10 @@ impl PI {
                     val[0] as u32 | (val[1] as u32) << 8 | (val[2] as u32) << 16 | (0 as u32) << 24
             }
             0x0460_0004 => {
-                self.PI_CART_ADDR =
-                    val[0] as u32 | (val[1] as u32) << 8 | (val[2] as u32) << 16 | (0 as u32) << 24
+                self.PI_CART_ADDR = val[0] as u32
+                    | (val[1] as u32) << 8
+                    | (val[2] as u32) << 16
+                    | (val[3] as u32) << 24
             }
             0x0460_0008 => {
                 self.PI_RD_LEN =
@@ -53,7 +68,7 @@ impl PI {
                 return Some(DMA_transfer_command {
                     from: self.PI_DRAM_ADDR,
                     to: self.PI_CART_ADDR,
-                    len: self.PI_RD_LEN as usize,
+                    len: (self.PI_RD_LEN + 1) as usize,
                 });
             }
             0x0460_000C => {
@@ -63,7 +78,7 @@ impl PI {
                 return Some(DMA_transfer_command {
                     from: self.PI_CART_ADDR,
                     to: self.PI_DRAM_ADDR,
-                    len: self.PI_WR_LEN as usize,
+                    len: (self.PI_WR_LEN + 1) as usize,
                 });
             }
             _ => {
@@ -72,13 +87,6 @@ impl PI {
         }
         None
     }
-
-    /*pub fn new() -> Self {
-        Self {
-            PI_DRAM_ADDR: 0.into(),
-            PI_CART_ADDR: 0.into(),
-        }
-    }*/
 }
 
 /*

@@ -391,14 +391,47 @@ impl System {
         match phys {
             //RCP PI address space NOT EXTERNAL BUS
             0x04600000..=0x046FFFFF => {
-                let dma_question_mark = self.pi.borrow_mut().write(phys, val);
-                if dma_question_mark.is_some() {
+                let possible_dma = self.pi.borrow_mut().write(phys, val);
+                if possible_dma.is_some() {
+                    debug!("begin PI DMA");
+                    let dma_packet = possible_dma.unwrap();
+                    debug!("PI DMA packet: {}", dma_packet);
+
                     //execute the dma
-                    let dma_question_mark = dma_question_mark.unwrap();
-                    let from = dma_question_mark.from;
-                    let to = dma_question_mark.to;
-                    let len = dma_question_mark.len;
-                    unsafe {}
+
+                    let len = dma_packet.len;
+                    let from = dma_packet.from;
+                    let to = dma_packet.to;
+                    /*let data = self.read(from, len).unwrap();
+
+                    let to = dma_packet.to;
+                    self.write(to, data);*/
+                    //let mut from_ptr = std::ptr::null();
+                    //let mut to_ptr = std::ptr::null();
+
+                    //coming FROM cart to rdram
+                    if dma_packet.from >= 0x10000000 {
+                        let data = self.cart.borrow_mut().rom[(from - 0x10000000) as usize
+                            ..((from - 0x10000000) as usize + len) as usize]
+                            .to_vec();
+                        self.rdram.borrow_mut().write(to, data).unwrap();
+                    }
+                    //coming FROM rdram to cart
+                    else {
+                        //to_ptr = self.cart.borrow_mut().rom.as_mut_ptr();
+                        let mut data = self.rdram.borrow().read(from, len).unwrap();
+                        //self.
+                        unsafe {
+                            let mut to_ptr = self.cart.borrow_mut().rom.as_mut_ptr();
+                            to_ptr = to_ptr.add(to as usize);
+
+                            let from_ptr = data.as_mut_ptr();
+
+                            std::ptr::copy_nonoverlapping(from_ptr, to_ptr, len);
+                        }
+                    }
+
+                    debug!("end PI DMA");
                 }
             }
             _ => panic!("trying to write to a physical address we havent mapped yet: {phys:#x}"),
