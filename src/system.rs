@@ -1,6 +1,7 @@
 use crate::cart::Cart;
 use crate::cpu::Cpu;
 use crate::cpu::GPR;
+use crate::ir::ControlConditionalType;
 use crate::ir::{AluOps::*, Op};
 use crate::pi::PI;
 use crate::rcp::Rcp;
@@ -8,6 +9,8 @@ use crate::rdram::Rdram;
 use colored::Colorize;
 use log::trace;
 use log::{debug, info};
+//use std::borrow::BorrowMut;
+//use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -193,6 +196,7 @@ impl System {
                 let function = match op_type {
                     //ADD => |num1: u32, num2: u32| -> u32 {num1.wrapping_add(num2)},
                     ORI => |num1: u64, num2: u64| -> u64 { num1 | num2 },
+                    ANDI => |num1: u64, num2: u64| -> u64 { num1 & num2 },
                     _ => unimplemented!(
                         "PANIC: this alu opcode does not have an cloosure implemented for it yet"
                     ),
@@ -223,7 +227,47 @@ impl System {
                 likely,
                 link,
             } => {
-                unimplemented!("control flow opcodes not implemented yet");
+                if likely {
+                    unimplemented!("hit a likely control flow. need to add support for this");
+                }
+                if link {
+                    unimplemented!("hit a link control flow. need to add support for this");
+                }
+
+                let reg1 = match register {
+                    Some(v) => match v {
+                        crate::ir::GPRorCoPGPR::cop => {
+                            unimplemented!("got a cop conditional in control flow")
+                        }
+                        crate::ir::GPRorCoPGPR::gpr(r) => Some(r),
+                    },
+                    None => None,
+                };
+
+                let operation = match conditional {
+                    ControlConditionalType::Ne { reg2 } => || -> bool {
+                        let rf = &self.cpu.borrow_mut().rf;
+                        //self.cpu.borrow_mut().rf[reg2] != self.cpu.borrow_mut().rf[reg1.unwrap()]
+                        rf[reg1.unwrap()] != rf[reg2]
+                    },
+                    _ => unimplemented!("hit a conditional condition we havent implemented yet"),
+                };
+                let take = operation();
+                //drop(operation);
+
+                if take {
+                    match destination {
+                        crate::ir::ControlDestType::Absolute { dest } => {
+                            self.cpu.borrow_mut().rf.PC = dest as u64;
+                        }
+                        crate::ir::ControlDestType::Relative { offset } => {
+                            self.cpu.borrow_mut().rf.PC =
+                                self.cpu.borrow_mut().rf.PC.wrapping_add_signed(offset);
+                        }
+                    }
+                }
+
+                //unimplemented!("control flow opcodes not implemented yet");
             }
             Op::Move { src, dest } => {
                 unimplemented!("moce opcodes not implemented yet");
