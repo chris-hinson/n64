@@ -1,6 +1,6 @@
 use std::fmt::{Display, Write};
 
-use log::warn;
+use log::{trace, warn};
 use proc_bitfield::bitfield;
 
 #[derive(Debug, Default, Copy, Clone)]
@@ -37,18 +37,55 @@ impl Display for DMA_transfer_command {
     }
 }
 
+#[derive(Debug)]
+pub struct PI_STATUS_READ {
+    pub complete: bool,
+    pub DMA_error: bool,
+    pub IO_error: bool,
+    pub DMA_busy: bool,
+}
+
+impl From<u32> for PI_STATUS_READ {
+    fn from(value: u32) -> Self {
+        Self {
+            complete: ((value & 0b1000) >> 3) != 0,
+            DMA_error: ((value & 0b100) >> 2) != 0,
+            IO_error: ((value & 0b10) >> 1) != 0,
+            DMA_busy: (value & 0b1) != 0,
+        }
+    }
+}
+
 impl PI {
     pub fn read(&self, addr: u32, len: usize) -> Result<Vec<u8>, String> {
-        unimplemented!("no reading from PI yet")
+        trace!("in PI read: addr: {addr:#x}, len: {:?}", len);
+
+        if !(0x0460_0000..=0x0460_0030).contains(&addr) {
+            panic!("attempting to read to a non mmio-address in PI {addr:#x}")
+        }
+        if len != 4 {
+            panic!("attempting to read more than 32 bits in PI. is this behavior you really really actually want?")
+        }
+
+        match addr {
+            //PI_STATUS
+            0x0460_0010 => {
+                let val: u32 = self.PI_STATUS.into();
+                return Ok(val.to_le_bytes().to_vec());
+            }
+            _ => {
+                panic!("panicking in PI read on a bad address within PI MMIO range. probably have not implemented reading this reg yet")
+            }
+        }
     }
 
     pub fn write(&mut self, addr: u32, val: Vec<u8>) -> Option<DMA_transfer_command> {
-        warn!("in PI write: addr: {addr:#x}, val: {:?}", val);
+        trace!("in PI write: addr: {addr:#x}, val: {:?}", val);
         if !(0x0460_0000..=0x0460_0030).contains(&addr) {
             panic!("attempting to write to a non mmio-address in PI {addr:#x}")
         }
         if val.len() != 4 {
-            panic!("attempting to write more than 32 bits in PI. is this behavior you really actually want?")
+            panic!("attempting to write more than 32 bits in PI. is this behavior you really really actually want?")
         }
         match addr {
             0x0460_0000 => {

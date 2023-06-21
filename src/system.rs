@@ -358,11 +358,11 @@ impl System {
     pub fn read(&self, addr: u32, len: usize) -> Result<Vec<u8>, String> {
         let phys = self.virt_to_phys(addr);
 
-        trace!(
+        /*trace!(
             "in system::read, converted virt {:#x} to phys {:#x}",
             addr,
             phys
-        );
+        );*/
 
         match phys {
             //RDRAM
@@ -386,6 +386,9 @@ impl System {
                     } //IMEM
                     _ => unreachable!("calculated an impossible imem or dmem addr"),
                 }
+            }
+            0x04600000..=0x046FFFFF => {
+                return self.pi.borrow().read(phys, len);
             }
             _ => {
                 panic!(
@@ -457,14 +460,14 @@ impl System {
                 panic!("tried to convert a virtual address in KSEG0 {virt:#x}")
             } //KSEG0
             0xA000_0000..=0xBFFF_FFFF => {
-                trace!("in system::virt_to_phys, virt is {:#x}", virt);
+                //trace!("in system::virt_to_phys, virt is {:#x}", virt);
 
                 let conversion = virt.checked_sub(0xA000_0000);
 
-                trace!("after sub: {:?}", conversion);
+                //trace!("after sub: {:?}", conversion);
                 match conversion {
                     Some(v) => {
-                        trace!("value is {:#x}", v);
+                        //trace!("value is {:#x}", v);
                         return v;
                     }
                     None => panic!("error converting address in KSEG1 {virt:#x}"),
