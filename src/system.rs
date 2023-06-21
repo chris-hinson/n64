@@ -6,6 +6,7 @@ use crate::pi::PI;
 use crate::rcp::Rcp;
 use crate::rdram::Rdram;
 use colored::Colorize;
+use log::trace;
 use log::{debug, info};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -116,7 +117,7 @@ impl System {
                 imm_src,
             } => {
                 if aligned == false {
-                    panic!("implement unaligned memory accesses")
+                    unimplemented!("implement unaligned memory accesses")
                 }
                 if condtional == true {
                     unimplemented!("implement load conditional")
@@ -132,10 +133,10 @@ impl System {
                         if width != 32 {
                             panic!("chris you gotta go implement reads for multiple widths")
                         }
-                        (bytes[0] as u32
+                        bytes[0] as u32
                             | (bytes[1] as u32) << 8
                             | (bytes[2] as u32) << 16
-                            | (bytes[3] as u32) << 24)
+                            | (bytes[3] as u32) << 24
                     }
                     None => imm_src.unwrap() as u32,
                 };
@@ -357,6 +358,12 @@ impl System {
     pub fn read(&self, addr: u32, len: usize) -> Result<Vec<u8>, String> {
         let phys = self.virt_to_phys(addr);
 
+        trace!(
+            "in system::read, converted virt {:#x} to phys {:#x}",
+            addr,
+            phys
+        );
+
         match phys {
             //RDRAM
             0x0000_0000..=0x03FFFFFF => self.rdram.borrow_mut().read(addr, len),
@@ -381,7 +388,10 @@ impl System {
                 }
             }
             _ => {
-                panic!("trying to read to a physical address we havent mapped yet lul");
+                panic!(
+                    "trying to read to a physical address we havent mapped yet: {:#x}",
+                    phys
+                );
             }
         }
     }
@@ -447,9 +457,16 @@ impl System {
                 panic!("tried to convert a virtual address in KSEG0 {virt:#x}")
             } //KSEG0
             0xA000_0000..=0xBFFF_FFFF => {
+                trace!("in system::virt_to_phys, virt is {:#x}", virt);
+
                 let conversion = virt.checked_sub(0xA000_0000);
+
+                trace!("after sub: {:?}", conversion);
                 match conversion {
-                    Some(v) => return v,
+                    Some(v) => {
+                        trace!("value is {:#x}", v);
+                        return v;
+                    }
                     None => panic!("error converting address in KSEG1 {virt:#x}"),
                 }
             } //KSEG1
