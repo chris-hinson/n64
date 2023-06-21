@@ -12,6 +12,7 @@ use log::{debug, info};
 //use std::borrow::BorrowMut;
 //use std::borrow::Borrow;
 use std::cell::RefCell;
+use std::ops::Shl;
 use std::rc::Rc;
 
 use mipsasm::Mipsasm;
@@ -85,20 +86,24 @@ impl System {
 
         let disas = mipsasm::Mipsasm::new();
 
-        let block_base = self.cpu.borrow().rf.PC;
-        let block = self.find_next_basic_block();
-        /*println!("found basic block:");
-        for (idx, instr) in block.iter().enumerate() {
-            println!(
-                "\t{:#x}, {instr:#x}: {}",
-                (block_base + (idx as u64 * 4)),
-                disas.disassemble(&[*instr])[0]
-            );
-        }*/
-
-        let ir_block = crate::ir::lift(block);
-        for op in ir_block {
-            self.execute_IR(op.0, op.1).unwrap();
+        loop {
+            let block_base = self.cpu.borrow().rf.PC;
+            let block = self.find_next_basic_block();
+            println!("found basic block:");
+            for (idx, instr) in block.iter().enumerate() {
+                println!(
+                    "\t{:#x}, {:#x}: {}",
+                    //(block_base + (idx as u64 * 4)),
+                    instr.0,
+                    instr.1,
+                    disas.disassemble(&[instr.1])[0]
+                );
+            }
+            let ir_block = crate::ir::lift(block);
+            for op in &ir_block {
+                self.execute_IR(op.0.clone(), op.1).unwrap();
+            }
+            drop(ir_block)
         }
 
         Ok(SystemResult::Graceful)
@@ -197,6 +202,7 @@ impl System {
                     //ADD => |num1: u32, num2: u32| -> u32 {num1.wrapping_add(num2)},
                     ORI => |num1: u64, num2: u64| -> u64 { num1 | num2 },
                     ANDI => |num1: u64, num2: u64| -> u64 { num1 & num2 },
+                    SLL => |num1: u64, num2: u64| -> u64 { num1.shl(num2) },
                     _ => unimplemented!(
                         "PANIC: this alu opcode does not have an cloosure implemented for it yet"
                     ),

@@ -23,7 +23,7 @@ use colored::Colorize;
 //control flow
 //system control
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Op {
     Load {
         width: usize,
@@ -83,7 +83,7 @@ pub enum Op {
     MalformedOp,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SystemOp {
     Cache,
     Syscall,
@@ -94,7 +94,7 @@ pub enum SystemOp {
     Eret,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AluOps {
     //immeadiate ops
     //These are all if I-type form
@@ -156,25 +156,25 @@ pub enum AluOps {
     MTHI,
     MTLO,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AluOpSrc {
     Imm(u16),
     Reg(GPR),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum shamt {
     Imm(u8),
     Variable(GPR),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum GPRorCoPGPR {
     gpr(GPR),
     cop,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ControlConditionalType {
     Unconditional,
     CopZFalse { cop: usize },
@@ -187,7 +187,7 @@ pub enum ControlConditionalType {
     LTZ,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ControlDestType {
     Absolute { dest: usize },
     Relative { offset: i64 },
@@ -219,7 +219,7 @@ pub fn lift(block: Vec<(u64, u32)>) -> Vec<(Op, u64)> {
     ir_block
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LiftError {}
 
 //we always return opcodes in an Ok variant, regardless of if they are valid opcodes or not
