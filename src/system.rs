@@ -425,12 +425,12 @@ impl System {
                 let sub_address = (phys - 0x04000000) % 8192;
                 match sub_address {
                     0x0..=0xFFF => {
-                        return Ok(self.rcp.borrow_mut().rsp.borrow_mut().DMEM
+                        return Ok(self.rcp.borrow().rsp.borrow().DMEM
                             [sub_address as usize..=sub_address as usize + len]
                             .to_vec());
                     } //DMEM
                     0x1000..=0x1FFF => {
-                        return Ok(self.rcp.borrow_mut().rsp.borrow_mut().IMEM
+                        return Ok(self.rcp.borrow().rsp.borrow().IMEM
                             [sub_address as usize..=sub_address as usize + len]
                             .to_vec());
                     } //IMEM
