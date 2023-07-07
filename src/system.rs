@@ -102,6 +102,7 @@ impl System {
             let ir_block = crate::ir::lift(block);
             for op in &ir_block {
                 self.execute_IR(op.0.clone(), op.1).unwrap();
+                self.cpu.borrow_mut().rf.PC += 4;
             }
             drop(ir_block)
         }
@@ -390,14 +391,14 @@ impl System {
         //Load IPL3 from the cartridge ROM (offset 0x40-0x1000) into the RSP DMEM
         unsafe {
             let mut src_ptr = self.cart.borrow_mut().rom.as_ptr();
-            src_ptr = src_ptr.add(0x40);
+            //src_ptr = src_ptr.add(0x40);
             let dst_ptr = self.rcp.borrow_mut().rsp.borrow_mut().DMEM.as_mut_ptr();
-            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, 0x1000 - 0x40);
+            std::ptr::copy_nonoverlapping(src_ptr, dst_ptr, 0x1000);
         }
 
         //jumping to ipl3 (this is where we will start actually executing instead of just fuzzing the same effects)
         //base of dmem is 0x04000000(phys) which ASSUMING we are kseg1, is then a virtual address of 0x04000000 + 0xA0000000 = 0xA4000000
-        self.cpu.borrow_mut().rf.PC = 0xA4000000;
+        self.cpu.borrow_mut().rf.PC = 0xA4000040;
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
