@@ -1,7 +1,9 @@
 use std::fmt::format;
 
+use log::debug;
+
 pub struct Rdram {
-    mem: [u8; 4608],
+    mem: Vec<u8>,
     RI_MODE: u32,
     RI_CONFIG: u32,
     RI_CURRENT_LOAD: u32,
@@ -23,7 +25,7 @@ pub struct Rdram {
 impl Default for Rdram {
     fn default() -> Self {
         return Rdram {
-            mem: [0; 4608],
+            mem: Vec::with_capacity(4194304),
             RI_SELECT: 0x14,
             RI_MODE: 0,
             RI_CONFIG: 0,
@@ -134,6 +136,8 @@ impl Rdram {
                 | ((addr >> 20) & 0x3F) << 20
                 | ((addr >> 11) & 0x1FF) << 11
                 | (addr & 0x7FF);
+
+            debug!("in rdram::write, final_addr is: {:#x}", final_addr);
 
             //TODO: check your math here i have no idea if youre adding the proper offset lol
             unsafe {
