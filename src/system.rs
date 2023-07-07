@@ -308,8 +308,9 @@ impl System {
                 | next_instr[3] as u32;
 
             if BRANCH_OR_JUMP_OPS.contains(&(((next_instr & 0xFC00_0000) >> 26) as u8))
-                || ((next_instr & 0xFC00_0000) >> 26 == 0 && ((next_instr & 0b111111) == 0b001000)
-                    || (next_instr & 0b111111) == 0b001001)
+                || ((next_instr & 0xFC00_0000) >> 26 == 0
+                    && (((next_instr & 0b111111) == 0b001000)
+                        || ((next_instr & 0b111111) == 0b001001)))
             {
                 //push the branch instruction here
                 block_vec.push((base_pc, next_instr));
