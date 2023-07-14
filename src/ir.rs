@@ -191,6 +191,7 @@ pub enum ControlConditionalType {
 pub enum ControlDestType {
     Absolute { dest: usize },
     Relative { offset: i64 },
+    Register { r: GPR },
 }
 
 //this function takes a guest machine code basic block as parsed elsewhere and returns an ir basic block
@@ -299,6 +300,14 @@ pub fn guest_to_ir(instr: u32) -> Result<Op, LiftError> {
                     dst: r_op_rd.into(),
                     src_1: Some(r_op_rt.into()),
                     src_2: AluOpSrc::Reg(r_op_rs.into()),
+                }),
+                //JR
+                0x08 => Ok(Op::ControlFlow {
+                    conditional: ControlConditionalType::Unconditional,
+                    destination: ControlDestType::Register { r: r_op_rs.into() },
+                    register: None,
+                    likely: false,
+                    link: false,
                 }),
                 _ => unimplemented!(
                     "decoded unimplemented opcode in SPECIAL decoding. bit pattern: {:x},  {}",

@@ -251,15 +251,16 @@ impl System {
                     None => None,
                 };
 
-                let operation = match conditional {
-                    ControlConditionalType::Ne { reg2 } => || -> bool {
+                let take: bool = match conditional {
+                    ControlConditionalType::Ne { reg2 } => {
                         let rf = &self.cpu.borrow_mut().rf;
                         //self.cpu.borrow_mut().rf[reg2] != self.cpu.borrow_mut().rf[reg1.unwrap()]
                         rf[reg1.unwrap()] != rf[reg2]
-                    },
+                    }
+                    ControlConditionalType::Unconditional => true,
                     _ => unimplemented!("hit a conditional condition we havent implemented yet"),
                 };
-                let take = operation();
+                //let take = operation();
                 //drop(operation);
 
                 if take {
@@ -270,6 +271,13 @@ impl System {
                         crate::ir::ControlDestType::Relative { offset } => {
                             self.cpu.borrow_mut().rf.PC =
                                 self.cpu.borrow_mut().rf.PC.wrapping_add_signed(offset);
+                        }
+                        crate::ir::ControlDestType::Register { r } => {
+                            self.cpu.borrow_mut().rf.PC = self.cpu.borrow_mut().rf[r];
+                            trace!(
+                                "control flow with a register going to {:#x}",
+                                self.cpu.borrow_mut().rf.PC
+                            );
                         }
                     }
                 }
